@@ -1,0 +1,6 @@
+{
+  "name": "Vibe Tees - Streetwear & Oversized Apparel",
+  "description": "Cross-platform mobile e-commerce and reselling app for trendy streetwear, custom oversized t-shirts, and lifestyle apparel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

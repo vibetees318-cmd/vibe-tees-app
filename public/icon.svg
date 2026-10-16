@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="128" fill="#09090b"/>
+  <rect x="24" y="24" width="464" height="464" rx="104" stroke="#27272a" stroke-width="8"/>
+  <!-- Stylized Geometric Streetwear 'V' & 'T' Emblem -->
+  <path d="M128 140L256 372L384 140H304L256 252L208 140H128Z" fill="#F4F4F5"/>
+  <path d="M228 160H284V330H228V160Z" fill="#F59E0B" fill-opacity="0.9"/>
+  <!-- Streetwear accent crosses/crosshairs -->
+  <circle cx="256" cy="380" r="8" fill="#F59E0B"/>
+</svg>

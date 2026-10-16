@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with customer, reseller, and supplier authentication details",
+      "type": "object",
+      "properties": {
+        "userID": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "shippingAddress": { "type": "object" },
+        "savedAddresses": { "type": "array" },
+        "role": { "type": "string", "enum": ["Customer", "Admin"] },
+        "mode": { "type": "string", "enum": ["Customer", "Reseller"] },
+        "isResellerVerified": { "type": "boolean" },
+        "resellerStoreName": { "type": "string" },
+        "totalEarnings": { "type": "number" },
+        "pendingPayout": { "type": "number" },
+        "transferredPayout": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userID", "fullName", "email"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer order with status tracking and reseller margins",
+      "type": "object",
+      "properties": {
+        "orderID": { "type": "string" },
+        "userID": { "type": "string" },
+        "itemsList": { "type": "array" },
+        "shippingAddress": { "type": "object" },
+        "paymentMethod": { "type": "string" },
+        "subtotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "basePrice": { "type": "number" },
+        "resellerMargin": { "type": "number" },
+        "resellerStoreName": { "type": "string" },
+        "orderStatus": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["orderID", "userID", "totalAmount", "orderStatus"]
+    },
+    "SupplierVerification": {
+      "title": "SupplierVerification",
+      "description": "Supplier enrolment ID, GST details, pickup address, and bank payout credentials",
+      "type": "object",
+      "properties": {
+        "userID": { "type": "string" },
+        "storeName": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "hasGst": { "type": "boolean" },
+        "gstin": { "type": "string" },
+        "enrolmentId": { "type": "string" },
+        "pickupAddress": { "type": "object" },
+        "bankAccountDetails": { "type": "object" },
+        "status": { "type": "string" },
+        "submittedAt": { "type": "string" }
+      },
+      "required": ["userID", "storeName", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles keyed by user ID"
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Orders keyed by order ID"
+    },
+    "/supplier_verifications/{verificationId}": {
+      "schema": { "$ref": "#/entities/SupplierVerification" },
+      "description": "Supplier enrolment ID and payout verification records"
+    }
+  }
+}
