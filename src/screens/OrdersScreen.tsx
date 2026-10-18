@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Order, OrderStatus, User } from '../types';
 import { api } from '../services/api';
+import { OrderItemCard } from '../components/OrderItemCard';
 
 interface OrdersScreenProps {
   currentUser: User | null;
@@ -185,30 +186,41 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Order Selector Chips if multiple orders in current tab */}
-          {filteredOrders.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-              {filteredOrders.map((o) => {
-                const isSelected = (activeOrder?.orderID === o.orderID);
-                return (
-                  <button
-                    key={o.orderID}
-                    onClick={() => setSelectedOrderId(o.orderID)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-mono whitespace-nowrap border transition-all ${
-                      isSelected
-                        ? 'bg-amber-400 text-zinc-950 border-amber-400 font-bold shadow-sm'
-                        : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
-                    }`}
-                  >
-                    {o.orderID} · ₹{o.totalAmount}
-                  </button>
-                );
-              })}
+          {/* Order Cards List matching the requested UI specification */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-0.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 font-mono">
+                {filterTab} Orders ({filteredOrders.length})
+              </span>
+              <span className="text-[11px] text-zinc-500">
+                Tap card to view tracking & details
+              </span>
             </div>
-          )}
 
-          {/* Active Order Card */}
+            <div>
+              {filteredOrders.map((order) => (
+                <OrderItemCard
+                  key={order.orderID}
+                  order={order}
+                  isSelected={activeOrder?.orderID === order.orderID}
+                  onClick={() => setSelectedOrderId(order.orderID)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Active Order Detailed Tracking View */}
           {activeOrder && (
+            <div className="space-y-4 pt-2 border-t border-zinc-800">
+              <div className="flex items-center justify-between px-0.5">
+                <span className="text-xs font-bold text-amber-400 uppercase font-mono tracking-wider flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5" />
+                  Tracking &amp; Fulfillment · {activeOrder.orderID}
+                </span>
+                <span className="text-[11px] text-zinc-400 font-mono">
+                  Total: ₹{activeOrder.totalAmount.toLocaleString('en-IN')}
+                </span>
+              </div>
             <div className="space-y-4">
               {/* Order Header Summary Card */}
               <div className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 space-y-3.5 shadow-sm">
@@ -433,6 +445,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
                 </div>
               </div>
             </div>
+          </div>
           )}
         </div>
       )}

@@ -20,6 +20,7 @@ import {
   syncUserToFirestore,
   syncOrderToFirestore,
   saveSupplierVerificationToFirestore,
+  saveProductToFirestore,
 } from './firebase';
 
 const STORAGE_KEYS = {
@@ -613,6 +614,7 @@ export const api = {
   async logout(): Promise<void> {
     await delay(30);
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    localStorage.removeItem('vibe_tees_user_logged_in');
   },
 
   // -------------------------------------------------------------
@@ -650,16 +652,51 @@ export const api = {
     return products.find((p) => p.productID === productId) || null;
   },
 
-  async createProduct(productData: Omit<Product, 'productID'>): Promise<Product> {
+  async createProduct(productData: Partial<Product> & { title: string; price: number }): Promise<Product> {
     await delay(80);
     const products: Product[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PRODUCTS) || '[]');
     const newProduct: Product = {
-      ...productData,
       productID: 'VT-PROD-' + (products.length + 1).toString().padStart(2, '0') + '-' + Math.random().toString(36).substring(2, 5).toUpperCase(),
+      title: productData.title.trim(),
+      description: productData.description || 'Premium heavyweight streetwear drops engineered with reinforced seams, drop-shoulder silhouette, and premium aesthetic.',
+      price: Number(productData.price),
+      discountPrice: Number(productData.discountPrice || productData.price),
+      category: (productData.category as any) || 'Oversized',
+      images: productData.images && productData.images.length > 0 ? productData.images : [
+        'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80',
+      ],
+      sizesAvailable: productData.sizesAvailable || ['S', 'M', 'L', 'XL', 'XXL'],
+      stockStatus: productData.stockStatus || 'In Stock',
+      fabricGsm: productData.fabricGsm || 240,
+      fit: productData.fit || 'Oversized Boxy Fit',
+      tag: 'New Drop',
+      rating: 5.0,
+      reviewCount: 1,
+      isResellerItem: true,
+      resellerPayout: Math.round(Number(productData.price) * 0.25),
+      podProvider: productData.podProvider || 'Printrove',
+      podSKU: productData.podSKU || '',
+      isPodEnabled: productData.isPodEnabled !== undefined ? productData.isPodEnabled : !!productData.podSKU,
+      colors: productData.colors && productData.colors.length > 0 ? productData.colors : ['Jet Black'],
+      stockCount: productData.stockCount !== undefined ? Number(productData.stockCount) : 50,
+      material: productData.material || '100% Combed Cotton',
+      fulfillmentType: productData.fulfillmentType || (productData.podSKU ? 'Printrove-POD' : 'In-House'),
     };
     products.unshift(newProduct);
     localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+
+    // Real Firestore persistence
+    try {
+      await saveProductToFirestore(newProduct);
+    } catch (err) {
+      console.warn('Firestore product sync skipped or encountered warning:', err);
+    }
+
     return newProduct;
+  },
+
+  async addProduct(productData: Partial<Product> & { title: string; price: number }): Promise<Product> {
+    return this.createProduct(productData);
   },
 
   // -------------------------------------------------------------
@@ -823,6 +860,39 @@ export const api = {
 
     // Sync order to Firestore for persistent tracking
     syncOrderToFirestore(newOrder).catch((err) => console.warn('Firestore order sync:', err));
+
+    // Auto-Push Order to Printrove POD API Route
+    try {
+      fetch('/api/orders/push-printrove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: newOrder.orderID,
+          customer: {
+            name: params.shippingAddress.fullName,
+            address: params.shippingAddress.street,
+            city: params.shippingAddress.city,
+            state: params.shippingAddress.state,
+            pincode: params.shippingAddress.pinCode,
+            phone: params.shippingAddress.phone,
+          },
+          items: params.itemsList.map((item) => ({
+            podSKU: (item as any).podSKU || 'PTR-TSHIRT-BLK-OVS',
+            quantity: item.quantity,
+            size: item.selectedSize,
+          })),
+          totalAmount: params.totalAmount,
+          paymentMethod: params.paymentMethod,
+        }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          console.log('Printrove Auto-Sync Response:', data);
+        })
+        .catch((err) => console.warn('Printrove POD sync notice:', err));
+    } catch (e) {
+      console.warn('POD trigger error:', e);
+    }
 
     // Update user earnings
     const users: User[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || '[]');

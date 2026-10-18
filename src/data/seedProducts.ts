@@ -296,8 +296,8 @@ export const DEMO_USERS: User[] = [
   },
   {
     userID: 'usr-admin-01',
-    fullName: 'Jordan Cruz (Store Lead)',
-    email: 'admin@vibetees.com',
+    fullName: 'Jordan Cruz (Owner & Store Lead)',
+    email: 'vibetees318@gmail.com',
     phone: '+1 (555) 791-0044',
     shippingAddress: {
       street: '108 Mercer Street, Floor 3',

@@ -1,9 +1,21 @@
 import React, { useState } from 'react';
-import { Flame, Sparkles, Filter, SlidersHorizontal, PackageSearch, Share2, Layers, Film } from 'lucide-react';
+import {
+  Flame,
+  Sparkles,
+  Filter,
+  SlidersHorizontal,
+  PackageSearch,
+  Share2,
+  Layers,
+  Film,
+  LayoutGrid,
+  List,
+} from 'lucide-react';
 import { AppMode, Product, ProductCategory, ProductSize } from '../types';
 import { DynamicVideoReelWidget } from '../components/DynamicVideoReelWidget';
 import { OfferZoneWidget } from '../components/OfferZoneWidget';
 import { ProductCard } from '../components/ProductCard';
+import ProductGrid from '../components/ProductGrid';
 
 interface HomeScreenProps {
   products: Product[];
@@ -39,6 +51,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const categories: ProductCategory[] = ['All', 'Oversized', 'Streetwear', 'Retro', 'Hoodies'];
   const [sortBy, setSortBy] = useState<'featured' | 'price-low' | 'price-high'>('featured');
   const [activeOfferFilter, setActiveOfferFilter] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'feed'>('grid');
 
   const handleSelectOffer = (cat: ProductCategory, label: string) => {
     onSelectCategory(cat);
@@ -218,16 +231,39 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </span>
           </div>
 
-          {/* Sort Selector */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="text-xs bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1 text-zinc-300 focus:outline-none focus:border-amber-400 transition-colors"
-          >
-            <option value="featured">Featured Drops</option>
-            <option value="price-low">Price: Low to High</option>
-            <option value="price-high">Price: High to Low</option>
-          </select>
+          {/* View Mode Toggle & Sort Selector */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-md transition-colors ${
+                  viewMode === 'grid' ? 'bg-amber-400 text-zinc-950 font-bold' : 'text-zinc-400 hover:text-white'
+                }`}
+                title="2-Column Product Grid (Meesho Style)"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode('feed')}
+                className={`p-1.5 rounded-md transition-colors ${
+                  viewMode === 'feed' ? 'bg-amber-400 text-zinc-950 font-bold' : 'text-zinc-400 hover:text-white'
+                }`}
+                title="Expanded Detail Cards"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="text-xs bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1 text-zinc-300 focus:outline-none focus:border-amber-400 transition-colors"
+            >
+              <option value="featured">Featured Drops</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="price-high">Price: High to Low</option>
+            </select>
+          </div>
         </div>
 
         {/* Category Horizontal Filter Segmented Tabs */}
@@ -254,18 +290,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       {/* 4. PRODUCT GRID */}
       <section aria-label="Products Catalog">
         {filtered.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {filtered.map((product) => (
-              <ProductCard
-                key={product.productID}
-                product={product}
-                onSelect={(p) => onSelectProduct(p)}
-                onQuickAdd={onQuickAdd}
-                isAddedJustNow={recentlyAddedId === product.productID}
-                appMode={appMode}
+          viewMode === 'grid' ? (
+            <div className="-mx-4 -mb-4 rounded-b-2xl overflow-hidden">
+              <ProductGrid
+                products={filtered}
+                onSelectProduct={(p) => onSelectProduct(p)}
+                selectedCategory={selectedCategory}
+                onSelectCategory={onSelectCategory}
+                sortBy={sortBy}
+                onSortChange={(s) => setSortBy(s as any)}
               />
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {filtered.map((product) => (
+                <ProductCard
+                  key={product.productID}
+                  product={product}
+                  onSelect={(p) => onSelectProduct(p)}
+                  onQuickAdd={onQuickAdd}
+                  isAddedJustNow={recentlyAddedId === product.productID}
+                  appMode={appMode}
+                />
+              ))}
+            </div>
+          )
         ) : (
           <div className="p-8 text-center rounded-2xl border border-zinc-800 bg-zinc-900/40 my-6 space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-zinc-800/80 mx-auto flex items-center justify-center text-zinc-400">

@@ -37,6 +37,9 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   const [selectedSize, setSelectedSize] = useState<ProductSize>(
     product.sizesAvailable[0] || 'L'
   );
+  const [selectedColor, setSelectedColor] = useState<string>(
+    product.colors && product.colors.length > 0 ? product.colors[0] : 'Jet Black'
+  );
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [showAddedToast, setShowAddedToast] = useState(false);
@@ -222,6 +225,44 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           </div>
         </div>
 
+        {/* Low Stock Urgency Pill */}
+        {product.stockCount !== undefined && product.stockCount > 0 && product.stockCount <= 20 && (
+          <div className="p-2.5 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs flex items-center justify-between">
+            <span className="font-semibold flex items-center gap-1.5">
+              <span>🔥 Selling fast! Only {product.stockCount} drops left in stock</span>
+            </span>
+            <span className="text-[10px] font-mono text-zinc-400">Restock pending</span>
+          </div>
+        )}
+
+        {/* Multi-Color Selector (if configured by owner) */}
+        {product.colors && product.colors.length > 0 && (
+          <div>
+            <label className="text-xs font-semibold text-zinc-200 block mb-2">
+              Colorway: <span className="text-amber-400 font-bold">{selectedColor}</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {product.colors.map((colorName) => {
+                const isSelected = selectedColor === colorName;
+                return (
+                  <button
+                    key={colorName}
+                    type="button"
+                    onClick={() => setSelectedColor(colorName)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                      isSelected
+                        ? 'bg-amber-400 text-zinc-950 border-amber-400 font-bold shadow-sm'
+                        : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700'
+                    }`}
+                  >
+                    {colorName}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Size Selector */}
         <div>
           <div className="flex items-center justify-between mb-2.5">
@@ -297,7 +338,21 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             </div>
             <div className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80">
               <span className="text-[10px] text-zinc-500 uppercase block font-mono">Fabric Grade</span>
-              <span className="font-medium text-zinc-200">{product.fabricGsm || 280} GSM Combed Cotton</span>
+              <span className="font-medium text-zinc-200">{product.fabricGsm || 280} GSM</span>
+            </div>
+            {product.material && (
+              <div className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80">
+                <span className="text-[10px] text-zinc-500 uppercase block font-mono">Material</span>
+                <span className="font-medium text-zinc-200">{product.material}</span>
+              </div>
+            )}
+            <div className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80">
+              <span className="text-[10px] text-zinc-500 uppercase block font-mono">Fulfillment</span>
+              <span className="font-medium text-amber-400">
+                {product.fulfillmentType === 'Printrove-POD'
+                  ? 'Printrove POD Express'
+                  : 'In-House HQ Dispatch'}
+              </span>
             </div>
           </div>
         </div>

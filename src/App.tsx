@@ -23,7 +23,11 @@ import { ResellerModal } from './components/ResellerModal';
 import { SupportModal } from './components/SupportModal';
 import { GeminiChatbotModal } from './components/GeminiChatbotModal';
 import { AiVideoBannerModal } from './components/AiVideoBannerModal';
+import AdminAddProduct from './components/AdminAddProduct';
+import PrivateOwnerPanel from './components/PrivateOwnerPanel';
 import { Bot, Sparkles } from 'lucide-react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './services/firebase';
 
 // Screens
 import { SplashScreen } from './screens/SplashScreen';
@@ -47,9 +51,9 @@ export default function App() {
   // Global App Mode: 'Customer' | 'Reseller' (Meesho style)
   const [appMode, setAppMode] = useState<AppMode>('Customer');
 
-  // Auth & User state (starts directly on Sign-Up / Login Screen for instant Mobile Number OTP preview)
+  // App initialization & session loading state
+  const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [showAuthScreen, setShowAuthScreen] = useState(true);
 
   // Navigation state: separated Orders, Categories and Account screen routing
   const [activeTab, setActiveTab] = useState<TabId>('home');
@@ -70,6 +74,8 @@ export default function App() {
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [showChatbotModal, setShowChatbotModal] = useState(false);
   const [showAiVideoModal, setShowAiVideoModal] = useState(false);
+  const [showAdminAddProductModal, setShowAdminAddProductModal] = useState(false);
+  const [showOwnerPanelModal, setShowOwnerPanelModal] = useState(false);
   const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null);
   const [latestOrder, setLatestOrder] = useState<Order | null>(null);
 
@@ -77,42 +83,100 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory>('All');
 
-  // Initialize data on mount
+  // Check local storage and Firebase session on app launch
   useEffect(() => {
-    async function loadData() {
+    let isMounted = true;
+
+    async function initCatalog() {
       try {
-        const user = await api.getCurrentUser();
-        setCurrentUser(user);
-        if (user?.mode) {
-          setAppMode(user.mode);
-        }
-
         const prods = await api.getProducts();
-        setProducts(prods);
-
-        if (user) {
-          const userCart = await api.getCart(user.userID);
-          setCart(userCart);
-          const userOrders = await api.getOrders(user.userID, user.role);
-          setOrders(userOrders);
-        }
+        if (isMounted) setProducts(prods);
       } catch (err) {
-        console.error('Data initialization error:', err);
+        console.error('Catalog load error:', err);
       }
     }
-    loadData();
+    initCatalog();
+
+    // Firebase Auth session listener
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      try {
+        if (firebaseUser) {
+          // User already logged in via Firebase!
+          localStorage.setItem('vibe_tees_user_logged_in', 'true');
+          const localUser = await api.getCurrentUser();
+          const activeUser: User = localUser || {
+            userID: firebaseUser.uid,
+            fullName: firebaseUser.displayName || 'Vibe Member',
+            email: firebaseUser.email || 'user@vibetees.com',
+            phone: firebaseUser.phoneNumber || '+91 98765 43210',
+            shippingAddress: { street: '', city: '', state: '', pinCode: '' },
+            savedAddresses: [],
+            role: 'Customer',
+            mode: 'Customer',
+            createdAt: new Date().toISOString(),
+          };
+
+          if (isMounted) {
+            setCurrentUser(activeUser);
+            if (activeUser.mode) setAppMode(activeUser.mode);
+            const [userCart, userOrders] = await Promise.all([
+              api.getCart(activeUser.userID),
+              api.getOrders(activeUser.userID, activeUser.role),
+            ]);
+            setCart(userCart);
+            setOrders(userOrders);
+          }
+        } else {
+          // Check local storage logged-in flag & local user
+          const hasLoggedInFlag = localStorage.getItem('vibe_tees_user_logged_in') === 'true';
+          const localUser = await api.getCurrentUser();
+
+          if (hasLoggedInFlag && localUser) {
+            if (isMounted) {
+              setCurrentUser(localUser);
+              if (localUser.mode) setAppMode(localUser.mode);
+              const [userCart, userOrders] = await Promise.all([
+                api.getCart(localUser.userID),
+                api.getOrders(localUser.userID, localUser.role),
+              ]);
+              setCart(userCart);
+              setOrders(userOrders);
+            }
+          } else {
+            // User logged in nahi hai
+            if (isMounted) {
+              setCurrentUser(null);
+              localStorage.removeItem('vibe_tees_user_logged_in');
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Session sync error:', err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   // Sync cart and orders when user changes
   const handleUserChange = async (user: User) => {
     setCurrentUser(user);
+    localStorage.setItem('vibe_tees_user_logged_in', 'true');
     if (user.mode) {
       setAppMode(user.mode);
     }
-    setShowAuthScreen(false);
-    const userCart = await api.getCart(user.userID);
+    const [userCart, userOrders] = await Promise.all([
+      api.getCart(user.userID),
+      api.getOrders(user.userID, user.role),
+    ]);
     setCart(userCart);
-    const userOrders = await api.getOrders(user.userID, user.role);
     setOrders(userOrders);
   };
 
@@ -264,6 +328,30 @@ export default function App() {
     ['Placed', 'Shipped', 'Out for Delivery'].includes(o.orderStatus)
   ).length;
 
+  // Jab tak app session check kar raha hai, Splash/Loading screen dikhayein
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex justify-center items-center text-white">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-yellow-400">VIBE TEES</h1>
+          <p className="text-xs text-gray-400 mt-2">Loading your store...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 1. Agar user logged in NAHI hai -> Direct Sign Up / Login Screen dikhayen
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col justify-center items-center p-4">
+        <div className="w-full max-w-md">
+          <AuthScreen onSuccess={handleUserChange} />
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Agar user pehle se logged in hai -> Direct Home Screen / Main App dikhayen
   return (
     <div
       style={{ width: '100vw', minHeight: '100vh' }}
@@ -276,14 +364,13 @@ export default function App() {
       {/* 1. Splash Screen Intro (Dismissible) */}
       {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
 
-      {/* 2. Top Header Navigation (Shown when not on PDP, Account, Categories, or full auth) */}
+      {/* 2. Top Header Navigation (Shown when not on PDP, Account, Categories) */}
       {activeScreen !== 'pdp' &&
         activeScreen !== 'order_success' &&
         activeTab !== 'account' &&
         activeScreen !== 'account' &&
         activeTab !== 'categories' &&
-        activeScreen !== 'categories' &&
-        !showAuthScreen && (
+        activeScreen !== 'categories' && (
           <Navbar
             cartCount={cartTotalCount}
             onOpenCart={() => {
@@ -292,32 +379,33 @@ export default function App() {
             }}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
-            currentRole={currentUser?.role || 'Customer'}
+            currentRole={currentUser.role}
             appMode={appMode}
-          onToggleAppMode={handleToggleAppMode}
-          onOpenResellerModal={() => setShowResellerModal(true)}
-          onNavigateHome={() => {
-            setActiveTab('home');
-            setActiveScreen('main');
-            setSelectedCategory('All');
-            setSearchQuery('');
-          }}
-          activeScreen={activeScreen}
-          onOpenChatbot={() => setShowChatbotModal(true)}
-        />
-      )}
+            onToggleAppMode={handleToggleAppMode}
+            onOpenResellerModal={() => setShowResellerModal(true)}
+            onNavigateHome={() => {
+              setActiveTab('home');
+              setActiveScreen('main');
+              setSelectedCategory('All');
+              setSearchQuery('');
+            }}
+            activeScreen={activeScreen}
+            onOpenChatbot={() => setShowChatbotModal(true)}
+            onOpenAdminAddProduct={() => setShowAdminAddProductModal(true)}
+            onOpenOwnerPanel={
+              currentUser.email?.trim().toLowerCase() === 'vibetees318@gmail.com'
+                ? () => setShowOwnerPanelModal(true)
+                : undefined
+            }
+          />
+        )}
 
       {/* Main Screen Router with SEPARATED Orders and Account Screens */}
       <main
         className="flex-1 flex flex-col pb-[80px]"
         style={{ paddingBottom: '80px' }}
       >
-        {showAuthScreen ? (
-          <AuthScreen
-            onSuccess={handleUserChange}
-            onCancel={() => setShowAuthScreen(false)}
-          />
-        ) : activeScreen === 'pdp' && selectedProduct ? (
+        {activeScreen === 'pdp' && selectedProduct ? (
           <ProductDetailScreen
             product={selectedProduct}
             onBack={() => setActiveScreen('main')}
@@ -380,8 +468,11 @@ export default function App() {
             }}
             onLogout={async () => {
               await api.logout();
+              try {
+                await auth.signOut();
+              } catch {}
+              localStorage.removeItem('vibe_tees_user_logged_in');
               setCurrentUser(null);
-              setShowAuthScreen(true);
             }}
             onOpenResellerModal={() => setShowResellerModal(true)}
             onNavigateHome={() => {
@@ -404,6 +495,20 @@ export default function App() {
             }}
             onOpenChatbot={() => setShowChatbotModal(true)}
             onOpenAiVideoModal={() => setShowAiVideoModal(true)}
+            onViewOrders={() => {
+              setActiveTab('orders');
+              setActiveScreen('orders');
+            }}
+            orders={orders}
+            onProductAdded={(newProd) => {
+              setProducts((prev) => [newProd, ...prev]);
+              setSelectedCategory('All');
+            }}
+            onOpenOwnerPanel={
+              currentUser.email?.trim().toLowerCase() === 'vibetees318@gmail.com'
+                ? () => setShowOwnerPanelModal(true)
+                : undefined
+            }
           />
         ) : activeScreen === 'categories' || activeTab === 'categories' ? (
           /* DEDICATED CATEGORIES TAB SCREEN (Meesho-Style Dual-Pane Vertical Sidebar Navigation) */
@@ -449,7 +554,7 @@ export default function App() {
       </main>
 
       {/* Floating VibeBot Gemini AI Concierge Trigger */}
-      {!showAuthScreen && activeScreen !== 'pdp' && activeScreen !== 'checkout' && (
+      {activeScreen !== 'pdp' && activeScreen !== 'checkout' && (
         <button
           onClick={() => setShowChatbotModal(true)}
           className="fixed bottom-20 right-4 z-40 px-3.5 py-2.5 rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 text-zinc-950 font-bold text-xs shadow-xl shadow-amber-400/25 border border-amber-300 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 group cursor-pointer"
@@ -467,7 +572,7 @@ export default function App() {
       )}
 
       {/* 3. Bottom Ergonomic Tab Bar (Shown across main browsing views) */}
-      {activeScreen !== 'pdp' && activeScreen !== 'checkout' && activeScreen !== 'order_success' && !showAuthScreen && (
+      {activeScreen !== 'pdp' && activeScreen !== 'checkout' && activeScreen !== 'order_success' && (
         <BottomTabBar
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -517,6 +622,39 @@ export default function App() {
         isOpen={showAiVideoModal}
         onClose={() => setShowAiVideoModal(false)}
       />
+
+      {/* Admin Add Product to Catalog (Firestore & API) */}
+      {showAdminAddProductModal && (
+        <AdminAddProduct
+          isModal={true}
+          onClose={() => setShowAdminAddProductModal(false)}
+          onProductAdded={(newProd) => {
+            setProducts((prev) => [newProd, ...prev]);
+            setSelectedCategory('All');
+            setShowAdminAddProductModal(false);
+          }}
+        />
+      )}
+
+      {/* Private Owner Panel (POD Mapping & Pricing) */}
+      {showOwnerPanelModal && (
+        <PrivateOwnerPanel
+          isOwner={currentUser?.email?.trim().toLowerCase() === 'vibetees318@gmail.com'}
+          isModal={true}
+          onClose={() => setShowOwnerPanelModal(false)}
+          onProductAdded={(newProd) => {
+            setProducts((prev) => [newProd, ...prev]);
+            setSelectedCategory('All');
+            setShowOwnerPanelModal(false);
+          }}
+          onSwitchToOwner={async () => {
+            const ownerUser = await api.switchDemoUser('Admin');
+            const updated = { ...ownerUser, email: 'vibetees318@gmail.com' };
+            await api.updateUserProfile(ownerUser.userID, { email: 'vibetees318@gmail.com' });
+            setCurrentUser(updated);
+          }}
+        />
+      )}
     </div>
   );
 }

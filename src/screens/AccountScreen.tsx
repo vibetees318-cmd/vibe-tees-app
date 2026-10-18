@@ -44,6 +44,8 @@ import {
   TrendingUp,
   Bot,
   Film,
+  Package,
+  Crown,
 } from 'lucide-react';
 import {
   BankAccountDetails,
@@ -52,10 +54,14 @@ import {
   ProductSize,
   SavedAddressItem,
   User,
+  Order,
 } from '../types';
 import { api } from '../services/api';
 import { INITIAL_PRODUCTS } from '../data/seedProducts';
 import { ResellerVerificationPortal } from '../components/ResellerVerificationPortal';
+import { OrderItemCard } from '../components/OrderItemCard';
+import AdminAddProduct from '../components/AdminAddProduct';
+import PrivateOwnerPanel from '../components/PrivateOwnerPanel';
 
 interface AccountScreenProps {
   currentUser: User | null;
@@ -70,6 +76,10 @@ interface AccountScreenProps {
   onSelectProduct?: (product: Product) => void;
   onOpenChatbot?: () => void;
   onOpenAiVideoModal?: () => void;
+  onViewOrders?: () => void;
+  orders?: Order[];
+  onProductAdded?: (newProduct: Product) => void;
+  onOpenOwnerPanel?: () => void;
 }
 
 export const AccountScreen: React.FC<AccountScreenProps> = ({
@@ -85,8 +95,14 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   onSelectProduct,
   onOpenChatbot,
   onOpenAiVideoModal,
+  onViewOrders,
+  orders = [],
+  onProductAdded,
+  onOpenOwnerPanel,
 }) => {
   // Modal visibility states
+  const [showOwnerPanelModal, setShowOwnerPanelModal] = useState(false);
+  const [showAdminAddProductModal, setShowAdminAddProductModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showReferModal, setShowReferModal] = useState(false);
@@ -508,10 +524,59 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
         {/* - Followed Shops (Store + 'New' badge)                        */}
         {/* ------------------------------------------------------------- */}
         <div className="space-y-1.5 pt-1">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 px-1">
-            My Activity
-          </h3>
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+              My Activity
+            </h3>
+            {onViewOrders && (
+              <button
+                onClick={onViewOrders}
+                className="text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition-colors"
+              >
+                View all orders &gt;
+              </button>
+            )}
+          </div>
+
+          {/* Quick Recent Order Preview using exact card design if any order exists */}
+          {orders && orders.length > 0 && (
+            <div className="pb-1">
+              <OrderItemCard
+                order={orders[0]}
+                onClick={onViewOrders}
+              />
+            </div>
+          )}
+
           <div className="rounded-2xl bg-zinc-900 border border-zinc-800 divide-y divide-zinc-800/80 overflow-hidden shadow-sm">
+            {/* My Orders */}
+            <div
+              onClick={onViewOrders}
+              className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-zinc-800/50 transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-zinc-800 text-amber-400 flex items-center justify-center shrink-0">
+                  <Package className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-white block">
+                    My Orders
+                  </span>
+                  <span className="text-[11px] text-zinc-400 block">
+                    Track shipments, delivery status &amp; view customer invoices
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {orders.length > 0 && (
+                  <span className="text-[11px] font-mono text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-full">
+                    {orders.length} orders
+                  </span>
+                )}
+                <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-zinc-300 group-hover:translate-x-0.5 transition-all" />
+              </div>
+            </div>
+
             {/* Wishlisted Products */}
             <div
               onClick={() => setShowWishlistModal(true)}
@@ -606,6 +671,60 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
             Others
           </h3>
           <div className="rounded-2xl bg-zinc-900 border border-zinc-800 divide-y divide-zinc-800/80 overflow-hidden shadow-sm">
+            {/* Owner Private Panel (POD Mapping & Pricing) - ONLY for vibetees318@gmail.com */}
+            {currentUser?.email?.trim().toLowerCase() === 'vibetees318@gmail.com' && (
+              <div
+                onClick={() => (onOpenOwnerPanel ? onOpenOwnerPanel() : setShowOwnerPanelModal(true))}
+                className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-zinc-800/50 transition-colors group bg-gradient-to-r from-yellow-400/5 to-transparent"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-yellow-400/20 text-yellow-400 flex items-center justify-center shrink-0">
+                    <Crown className="w-4 h-4 stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-yellow-400 block">
+                        👑 Owner Private Panel
+                      </span>
+                      <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-yellow-400 text-black tracking-wider">
+                        POD &amp; PRICING
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-zinc-400 block">
+                      Manage catalog, Printrove POD SKU mapping &amp; auto-fulfillment
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-yellow-400 group-hover:translate-x-0.5 transition-all" />
+              </div>
+            )}
+
+            {/* Add New Product (Admin) */}
+            <div
+              onClick={() => setShowAdminAddProductModal(true)}
+              className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-zinc-800/50 transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center shrink-0">
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white block">
+                      Add New Product (Admin)
+                    </span>
+                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-amber-400 text-zinc-950 tracking-wider">
+                      CATALOG
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-zinc-400 block">
+                    Upload new streetwear drop with price, MRP &amp; image to Firebase
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-zinc-300 group-hover:translate-x-0.5 transition-all" />
+            </div>
+
             {/* Vibe Tees Balance */}
             <div
               onClick={() => setShowBalanceModal(true)}
@@ -2030,6 +2149,43 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
           showToast('Congratulations! Reseller status is now Verified!');
         }}
       />
+      {/* ============================================================= */}
+      {/* ADMIN ADD PRODUCT MODAL                                      */}
+      {/* ============================================================= */}
+      {showAdminAddProductModal && (
+        <AdminAddProduct
+          isModal={true}
+          onClose={() => setShowAdminAddProductModal(false)}
+          onProductAdded={(newProd) => {
+            if (onProductAdded) {
+              onProductAdded(newProd);
+            }
+            showToast(`"${newProd.title}" added to store catalog!`);
+          }}
+        />
+      )}
+
+      {/* ============================================================= */}
+      {/* PRIVATE OWNER PANEL MODAL                                    */}
+      {/* ============================================================= */}
+      {showOwnerPanelModal && (
+        <PrivateOwnerPanel
+          isOwner={currentUser?.email?.trim().toLowerCase() === 'vibetees318@gmail.com'}
+          isModal={true}
+          onClose={() => setShowOwnerPanelModal(false)}
+          onProductAdded={(newProd) => {
+            if (onProductAdded) {
+              onProductAdded(newProd);
+            }
+            showToast(`Product "${newProd.title}" published with POD mapping!`);
+          }}
+          onSwitchToOwner={async () => {
+            const ownerUser = await api.switchDemoUser('Admin');
+            onUserUpdated(ownerUser);
+            showToast('Switched to Owner account!');
+          }}
+        />
+      )}
     </div>
   );
 };

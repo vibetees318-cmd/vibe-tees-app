@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ShoppingBag, X, Sparkles, Bot } from 'lucide-react';
+import { Search, ShoppingBag, X, Sparkles, Bot, Plus, Crown } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 import { AppMode, UserRole } from '../types';
 
@@ -15,6 +15,8 @@ interface NavbarProps {
   onNavigateHome: () => void;
   activeScreen: string;
   onOpenChatbot?: () => void;
+  onOpenAdminAddProduct?: () => void;
+  onOpenOwnerPanel?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -28,6 +30,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenResellerModal,
   onNavigateHome,
   onOpenChatbot,
+  onOpenAdminAddProduct,
+  onOpenOwnerPanel,
 }) => {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
@@ -94,6 +98,32 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span>Resell</span>
           </button>
+
+          {/* Admin Add Product Button */}
+          {onOpenAdminAddProduct && (
+            <button
+              onClick={onOpenAdminAddProduct}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-zinc-950 bg-amber-400 hover:bg-amber-300 transition-all active:scale-95 shadow-sm"
+              title="Add New Streetwear Product to Catalog"
+              aria-label="Add Product"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+              <span className="hidden sm:inline">Add Drop</span>
+            </button>
+          )}
+
+          {/* Owner Private Panel Button */}
+          {onOpenOwnerPanel && (
+            <button
+              onClick={onOpenOwnerPanel}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-yellow-300 bg-yellow-400/10 hover:bg-yellow-400/20 border border-yellow-400/30 transition-all active:scale-95 shadow-sm"
+              title="Open Private Owner Panel (POD & Pricing)"
+              aria-label="Owner Panel"
+            >
+              <Crown className="w-3.5 h-3.5 text-yellow-400" />
+              <span className="hidden sm:inline">Owner</span>
+            </button>
+          )}
 
           {/* VibeBot AI Chatbot Button */}
           {onOpenChatbot && (

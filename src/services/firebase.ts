@@ -19,7 +19,7 @@ import {
   getDocFromServer,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { User, Order, ShippingAddress, BankAccountDetails } from '../types';
+import { User, Order, ShippingAddress, BankAccountDetails, Product } from '../types';
 
 // Initialize Firebase App
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
@@ -220,6 +220,37 @@ export async function fetchUserOrdersFromFirestore(userId: string): Promise<Orde
     return orders;
   } catch (err) {
     console.warn('Could not fetch from Firestore, falling back to local state:', err);
+    handleFirestoreError(err, OperationType.LIST, path);
+    return [];
+  }
+}
+
+/**
+ * Save new product to Firestore catalog
+ */
+export async function saveProductToFirestore(product: Product): Promise<void> {
+  const path = `products/${product.productID}`;
+  try {
+    const productRef = doc(db, 'products', product.productID);
+    await setDoc(productRef, product, { merge: true });
+  } catch (err) {
+    console.error('Failed to save product to Firestore:', err);
+    handleFirestoreError(err, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Fetch all products from Firestore catalog
+ */
+export async function fetchProductsFromFirestore(): Promise<Product[]> {
+  const path = 'products';
+  try {
+    const snap = await getDocs(collection(db, path));
+    const items: Product[] = [];
+    snap.forEach((d) => items.push(d.data() as Product));
+    return items;
+  } catch (err) {
+    console.warn('Could not fetch products from Firestore, using local fallback:', err);
     handleFirestoreError(err, OperationType.LIST, path);
     return [];
   }

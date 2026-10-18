@@ -61,6 +61,25 @@
         "submittedAt": { "type": "string" }
       },
       "required": ["userID", "storeName", "status"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Streetwear catalog item with pricing, images, categories and inventory status",
+      "type": "object",
+      "properties": {
+        "productID": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "discountPrice": { "type": "number" },
+        "category": { "type": "string" },
+        "images": { "type": "array" },
+        "sizesAvailable": { "type": "array" },
+        "stockStatus": { "type": "string" },
+        "fabricGsm": { "type": "number" },
+        "fit": { "type": "string" }
+      },
+      "required": ["productID", "title", "price", "category"]
     }
   },
   "firestore": {
@@ -75,6 +94,10 @@
     "/supplier_verifications/{verificationId}": {
       "schema": { "$ref": "#/entities/SupplierVerification" },
       "description": "Supplier enrolment ID and payout verification records"
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Streetwear catalog items keyed by product ID"
     }
   }
 }

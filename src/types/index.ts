@@ -108,6 +108,13 @@ export interface Product {
   isResellerItem?: boolean;
   resellerName?: string;
   resellerPayout?: number;
+  podProvider?: string;
+  podSKU?: string;
+  isPodEnabled?: boolean;
+  colors?: string[];
+  stockCount?: number;
+  material?: string;
+  fulfillmentType?: 'In-House' | 'Printrove-POD';
 }
 
 export interface CartItem {
