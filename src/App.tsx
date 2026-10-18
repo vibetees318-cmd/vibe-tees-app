@@ -303,6 +303,7 @@ export default function App() {
             setSearchQuery('');
           }}
           activeScreen={activeScreen}
+          onOpenChatbot={() => setShowChatbotModal(true)}
         />
       )}
 
@@ -401,6 +402,8 @@ export default function App() {
               setSelectedProduct(prod);
               setActiveScreen('pdp');
             }}
+            onOpenChatbot={() => setShowChatbotModal(true)}
+            onOpenAiVideoModal={() => setShowAiVideoModal(true)}
           />
         ) : activeScreen === 'categories' || activeTab === 'categories' ? (
           /* DEDICATED CATEGORIES TAB SCREEN (Meesho-Style Dual-Pane Vertical Sidebar Navigation) */
@@ -440,9 +443,28 @@ export default function App() {
             appMode={appMode}
             onToggleAppMode={handleToggleAppMode}
             recentlyAddedId={recentlyAddedId}
+            onOpenAiVideoModal={() => setShowAiVideoModal(true)}
           />
         )}
       </main>
+
+      {/* Floating VibeBot Gemini AI Concierge Trigger */}
+      {!showAuthScreen && activeScreen !== 'pdp' && activeScreen !== 'checkout' && (
+        <button
+          onClick={() => setShowChatbotModal(true)}
+          className="fixed bottom-20 right-4 z-40 px-3.5 py-2.5 rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 text-zinc-950 font-bold text-xs shadow-xl shadow-amber-400/25 border border-amber-300 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 group cursor-pointer"
+          title="Ask VibeBot AI (Gemini Support & Orders)"
+          aria-label="Open VibeBot AI Support"
+        >
+          <div className="w-6 h-6 rounded-full bg-zinc-950 text-amber-400 flex items-center justify-center shadow-inner">
+            <Bot className="w-3.5 h-3.5" />
+          </div>
+          <span className="font-display font-black tracking-wide uppercase text-[11px]">
+            AI Support
+          </span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        </button>
+      )}
 
       {/* 3. Bottom Ergonomic Tab Bar (Shown across main browsing views) */}
       {activeScreen !== 'pdp' && activeScreen !== 'checkout' && activeScreen !== 'order_success' && !showAuthScreen && (
@@ -480,6 +502,20 @@ export default function App() {
       <SupportModal
         isOpen={showSupportModal}
         onClose={() => setShowSupportModal(false)}
+      />
+
+      {/* Multi-turn Gemini AI Chatbot for Customer Support and Order Queries */}
+      <GeminiChatbotModal
+        isOpen={showChatbotModal}
+        onClose={() => setShowChatbotModal(false)}
+        currentUser={currentUser}
+        latestOrder={orders[0] || latestOrder}
+      />
+
+      {/* Veo 3.1 AI Product Hero Video Banner Animator */}
+      <AiVideoBannerModal
+        isOpen={showAiVideoModal}
+        onClose={() => setShowAiVideoModal(false)}
       />
     </div>
   );

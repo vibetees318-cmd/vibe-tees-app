@@ -12,7 +12,6 @@ import {
   doc,
   getDoc,
   setDoc,
-  updateDoc,
   collection,
   query,
   where,
@@ -34,8 +33,56 @@ export const db = firebaseConfig.firestoreDatabaseId
   ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
   : getFirestore(app);
 
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map((provider) => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || [],
+    },
+    operationType,
+    path,
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 // Verify connection as specified in guidelines
 async function testFirestoreConnection() {
+  const path = 'test/connection';
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
@@ -54,11 +101,18 @@ export async function signInWithGoogle(): Promise<User> {
   const fbUser = result.user;
 
   // Check if user document already exists in Firestore
+  const path = `users/${fbUser.uid}`;
   const userRef = doc(db, 'users', fbUser.uid);
-  const snap = await getDoc(userRef);
+  let snap;
+  try {
+    snap = await getDoc(userRef);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, path);
+    throw err;
+  }
 
   let appUser: User;
-  if (snap.exists()) {
+  if (snap && snap.exists()) {
     appUser = snap.data() as User;
   } else {
     // Create new user profile in Firestore
@@ -83,7 +137,11 @@ export async function signInWithGoogle(): Promise<User> {
       transferredPayout: 0,
       createdAt: new Date().toISOString(),
     };
-    await setDoc(userRef, appUser);
+    try {
+      await setDoc(userRef, appUser);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, path);
+    }
   }
 
   return appUser;
@@ -93,23 +151,27 @@ export async function signInWithGoogle(): Promise<User> {
  * Sync user profile to Firestore
  */
 export async function syncUserToFirestore(user: User): Promise<void> {
+  const path = `users/${user.userID}`;
   try {
     const userRef = doc(db, 'users', user.userID);
     await setDoc(userRef, user, { merge: true });
   } catch (err) {
     console.error('Failed to sync user to Firestore:', err);
+    handleFirestoreError(err, OperationType.WRITE, path);
   }
 }
 
 /**
- * Sync order to Firestore
+ * Sync order to Firestore for live tracking
  */
 export async function syncOrderToFirestore(order: Order): Promise<void> {
+  const path = `orders/${order.orderID}`;
   try {
     const orderRef = doc(db, 'orders', order.orderID);
     await setDoc(orderRef, order, { merge: true });
   } catch (err) {
     console.error('Failed to sync order to Firestore:', err);
+    handleFirestoreError(err, OperationType.WRITE, path);
   }
 }
 
@@ -127,6 +189,7 @@ export async function saveSupplierVerificationToFirestore(data: {
   pickupAddress?: ShippingAddress;
   bankAccountDetails?: BankAccountDetails;
 }): Promise<void> {
+  const path = `supplier_verifications/${data.userID}`;
   try {
     const verifRef = doc(db, 'supplier_verifications', data.userID);
     await setDoc(
@@ -140,6 +203,7 @@ export async function saveSupplierVerificationToFirestore(data: {
     );
   } catch (err) {
     console.error('Failed to save supplier verification to Firestore:', err);
+    handleFirestoreError(err, OperationType.WRITE, path);
   }
 }
 
@@ -147,14 +211,16 @@ export async function saveSupplierVerificationToFirestore(data: {
  * Fetch orders from Firestore for tracking
  */
 export async function fetchUserOrdersFromFirestore(userId: string): Promise<Order[]> {
+  const path = 'orders';
   try {
-    const q = query(collection(db, 'orders'), where('userID', '==', userId));
+    const q = query(collection(db, path), where('userID', '==', userId));
     const snap = await getDocs(q);
     const orders: Order[] = [];
     snap.forEach((d) => orders.push(d.data() as Order));
     return orders;
   } catch (err) {
     console.warn('Could not fetch from Firestore, falling back to local state:', err);
+    handleFirestoreError(err, OperationType.LIST, path);
     return [];
   }
 }

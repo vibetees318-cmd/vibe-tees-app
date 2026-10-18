@@ -92,7 +92,7 @@ export const AiVideoBannerModal: React.FC<AiVideoBannerModalProps> = ({
     setError(null);
     setIsGenerating(true);
     setProgressStep(1);
-    setProgressMessage('Submitting photo to Veo (veo-3.1-fast-generate-preview)...');
+    setProgressMessage('Submitting photo to Veo (veo-3.1-lite-generate-preview)...');
 
     try {
       // 1. Initiate video generation operation on server
@@ -138,14 +138,9 @@ export const AiVideoBannerModal: React.FC<AiVideoBannerModalProps> = ({
 
         if (pollData.done) {
           isDone = true;
-          if (pollData.videoUri) {
-            setGeneratedVideoUrl(pollData.videoUri);
-          } else {
-            // High fidelity fallback simulation video for instant preview if cloud download token expires
-            setGeneratedVideoUrl(
-              'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4'
-            );
-          }
+          // Use proxy download URL or direct URI
+          const videoUrl = `/api/video-download/${encodeURIComponent(operationName)}`;
+          setGeneratedVideoUrl(videoUrl);
           break;
         }
       }

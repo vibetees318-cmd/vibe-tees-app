@@ -14,6 +14,7 @@ import {
   ShippingAddress,
   User,
   UserRole,
+} from '../types';
 import { DEMO_USERS, INITIAL_PRODUCTS } from '../data/seedProducts';
 import {
   syncUserToFirestore,
